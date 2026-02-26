@@ -14,7 +14,53 @@ enum OperandType {
 
 fn main() {
     let tokens = tokenize("2 * 5 + 3 / 7");
-    println!("{:?}", tokens);
+    let postfix = postfixer(&tokens);
+
+    println!("{:?}", postfix);
+}
+
+fn precedence(arg: OperandType) -> u8 {
+    match arg {
+        OperandType::Add | OperandType::Subtract => 1,
+        OperandType::Multiply | OperandType::Divide => 2,
+    }
+}
+
+fn postfixer(arg: &Vec<Token>) -> Vec<Token> {
+    let mut res: Vec<Token> = Vec::new();
+    let mut stack: Vec<Token> = Vec::new();
+
+    for i in arg {
+        match i {
+            Token::Number(_) => {
+                res.push(*i);
+            }
+            Token::Operand(n) => {
+                if stack.len() == 0 {
+                    stack.push(*i)
+                } else {
+                    let last_token_in_stack = stack[stack.len() - 1];
+                    let opr = match last_token_in_stack {
+                        Token::Operand(n) => n,
+                        _ => panic!("Number must not be in stack"),
+                    };
+                    if precedence(*n) < precedence(opr) {
+                        stack.pop().unwrap();
+                        stack.push(*i);
+                        res.push(last_token_in_stack);
+                    } else {
+                        stack.push(*i);
+                    }
+                }
+            }
+        }
+    }
+
+    while let Some(n) = stack.pop() {
+        res.push(n);
+    }
+
+    res
 }
 
 fn sanitize_whitespace(str: &str) -> String {
