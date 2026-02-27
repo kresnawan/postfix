@@ -10,10 +10,12 @@ enum OperandType {
     Divide,
     Add,
     Subtract,
+    OpenBracket,
+    CloseBracket,
 }
 
 fn main() {
-    let tokens = tokenize("3 + 1 / 2 * 10");
+    let tokens = tokenize("8 * (2 + 100) / (9 * 2 + 24)");
     let postfix = postfixer(tokens);
 
     println!("{:?}", postfix);
@@ -23,6 +25,7 @@ fn precedence(arg: &OperandType) -> u8 {
     match arg {
         OperandType::Add | OperandType::Subtract => 1,
         OperandType::Multiply | OperandType::Divide => 2,
+        OperandType::OpenBracket | OperandType::CloseBracket => 3,
     }
 }
 
@@ -36,6 +39,29 @@ fn postfixer(arg: Vec<Token>) -> Vec<Token> {
                 res.push(i);
             }
             Token::Operand(current) => {
+                match current {
+                    OperandType::OpenBracket => {
+                        stack.push(i);
+                        continue;
+                    }
+                    OperandType::CloseBracket => {
+                        while let Some(Token::Operand(n)) = stack.pop() {
+                            match n {
+                                OperandType::OpenBracket => {
+                                    break;
+                                }
+                                _ => {
+                                    res.push(Token::Operand(n));
+                                }
+                            }
+                        }
+
+                        continue;
+                    }
+
+                    _ => {}
+                }
+
                 let temp_stack = stack.clone();
                 let last_token_in_stack = match temp_stack.last() {
                     Some(n) => n,
@@ -44,10 +70,20 @@ fn postfixer(arg: Vec<Token>) -> Vec<Token> {
                         continue;
                     }
                 };
+
                 let last_token_operand = match last_token_in_stack {
                     Token::Operand(n) => n,
                     _ => panic!("Number must not be in stack"),
                 };
+
+                match last_token_operand {
+                    OperandType::OpenBracket => {
+                        stack.push(i);
+                        continue;
+                    }
+                    _ => {}
+                }
+
                 if precedence(&current) <= precedence(last_token_operand) {
                     stack.pop().unwrap();
                     stack.push(i);
@@ -117,6 +153,12 @@ fn tokenize(arg: &str) -> Vec<Token> {
             }
             '-' => {
                 res.push(Token::Operand(OperandType::Subtract));
+            }
+            '(' => {
+                res.push(Token::Operand(OperandType::OpenBracket));
+            }
+            ')' => {
+                res.push(Token::Operand(OperandType::CloseBracket));
             }
             _ => panic!("Char must valid"),
         }
