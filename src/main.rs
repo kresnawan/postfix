@@ -14,43 +14,46 @@ enum OperandType {
 
 fn main() {
     let tokens = tokenize("3 + 1 / 2 * 10");
-    let postfix = postfixer(&tokens);
+    let postfix = postfixer(tokens);
 
     println!("{:?}", postfix);
 }
 
-fn precedence(arg: OperandType) -> u8 {
+fn precedence(arg: &OperandType) -> u8 {
     match arg {
         OperandType::Add | OperandType::Subtract => 1,
         OperandType::Multiply | OperandType::Divide => 2,
     }
 }
 
-fn postfixer(arg: &Vec<Token>) -> Vec<Token> {
+fn postfixer(arg: Vec<Token>) -> Vec<Token> {
     let mut res: Vec<Token> = Vec::new();
     let mut stack: Vec<Token> = Vec::new();
 
     for i in arg {
         match i {
             Token::Number(_) => {
-                res.push(*i);
+                res.push(i);
             }
             Token::Operand(current) => {
-                if stack.len() == 0 {
-                    stack.push(*i)
-                } else {
-                    let last_token_in_stack = stack[stack.len() - 1];
-                    let last_token_operand = match last_token_in_stack {
-                        Token::Operand(n) => n,
-                        _ => panic!("Number must not be in stack"),
-                    };
-                    if precedence(*current) <= precedence(last_token_operand) {
-                        stack.pop().unwrap();
-                        stack.push(*i);
-                        res.push(last_token_in_stack);
-                    } else {
-                        stack.push(*i);
+                let temp_stack = stack.clone();
+                let last_token_in_stack = match temp_stack.last() {
+                    Some(n) => n,
+                    None => {
+                        stack.push(i);
+                        continue;
                     }
+                };
+                let last_token_operand = match last_token_in_stack {
+                    Token::Operand(n) => n,
+                    _ => panic!("Number must not be in stack"),
+                };
+                if precedence(&current) <= precedence(last_token_operand) {
+                    stack.pop().unwrap();
+                    stack.push(i);
+                    res.push(*last_token_in_stack);
+                } else {
+                    stack.push(i);
                 }
             }
         }
