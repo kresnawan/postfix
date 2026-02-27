@@ -13,7 +13,7 @@ enum OperandType {
 }
 
 fn main() {
-    let tokens = tokenize("2 * 5 + 3 / 7");
+    let tokens = tokenize("3 + 1 / 2 * 10");
     let postfix = postfixer(&tokens);
 
     println!("{:?}", postfix);
@@ -35,16 +35,16 @@ fn postfixer(arg: &Vec<Token>) -> Vec<Token> {
             Token::Number(_) => {
                 res.push(*i);
             }
-            Token::Operand(n) => {
+            Token::Operand(current) => {
                 if stack.len() == 0 {
                     stack.push(*i)
                 } else {
                     let last_token_in_stack = stack[stack.len() - 1];
-                    let opr = match last_token_in_stack {
+                    let last_token_operand = match last_token_in_stack {
                         Token::Operand(n) => n,
                         _ => panic!("Number must not be in stack"),
                     };
-                    if precedence(*n) < precedence(opr) {
+                    if precedence(*current) <= precedence(last_token_operand) {
                         stack.pop().unwrap();
                         stack.push(*i);
                         res.push(last_token_in_stack);
