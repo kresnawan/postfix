@@ -5,14 +5,7 @@ use err::Err;
 use token::{DelimType, OperatorType, Token};
 
 fn main() {
-    let tokens = match tokenize("(2 + 5) * 3") {
-        Ok(n) => n,
-        Err(err) => {
-            panic!("{}", err);
-        }
-    };
-
-    let postfix = match postfixer(tokens) {
+    let postfix = match postfixer("2 * (3 + 5)") {
         Ok(n) => n,
         Err(err) => {
             panic!("{}", err);
@@ -34,7 +27,14 @@ fn precedence(arg: &Token) -> Option<u8> {
     }
 }
 
-fn postfixer(arg: Vec<Token>) -> Result<Vec<Token>, Err> {
+fn postfixer(opr: &str) -> Result<Vec<Token>, Err> {
+    let arg = match tokenize(opr) {
+        Ok(res) => res,
+        Err(e) => {
+            return Err(e);
+        }
+    };
+
     let mut res: Vec<Token> = Vec::new();
     let mut stack: Vec<Token> = Vec::new();
 
