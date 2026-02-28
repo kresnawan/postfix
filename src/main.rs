@@ -5,7 +5,7 @@ use err::Err;
 use token::{DelimType, OperatorType, Token};
 
 fn main() {
-    let tokens = match tokenize("8 * (2 + 100) / (9 * 2 + 24)") {
+    let tokens = match tokenize("(2 + 5) * 3") {
         Ok(n) => n,
         Err(err) => {
             panic!("{}", err);
@@ -56,17 +56,10 @@ fn postfixer(arg: Vec<Token>) -> Result<Vec<Token>, Err> {
 
                 DelimType::CloseParen => {
                     while let Some(n) = stack.pop() {
-                        match n {
-                            Token::Delimiter(d) => match d {
-                                DelimType::OpenParen => {
-                                    break;
-                                }
-
-                                _ => {}
-                            },
-                            _ => {
-                                res.push(n);
-                            }
+                        if let Token::Delimiter(DelimType::OpenParen) = n {
+                            break;
+                        } else {
+                            res.push(n);
                         }
                     }
 
@@ -76,6 +69,13 @@ fn postfixer(arg: Vec<Token>) -> Result<Vec<Token>, Err> {
 
             /* Operator handler */
             Token::Operator(_) => {
+                /* Checks if there are double operator */
+                if let Some(&n) = arg_iter.peek() {
+                    if let Token::Operator(_) = n {
+                        return Err(Err::DanglingOperator);
+                    }
+                }
+
                 let temp_stack = stack.clone();
                 let last_token_in_stack = match temp_stack.last() {
                     Some(n) => n,
@@ -130,6 +130,7 @@ fn tokenize(arg: &str) -> Result<Vec<Token>, Err> {
     let mut res: Vec<Token> = Vec::new();
 
     let mut iter = str.chars().peekable();
+    let mut paren_hold: u32 = 0;
 
     while let Some(c) = iter.next() {
         match c {
@@ -151,11 +152,6 @@ fn tokenize(arg: &str) -> Result<Vec<Token>, Err> {
                 res.push(Token::Operator(OperatorType::Multiply));
             }
             '/' => {
-                if let Some(&n) = iter.peek() {
-                    if n == '0' {
-                        return Err(Err::DivideByZero);
-                    }
-                }
                 res.push(Token::Operator(OperatorType::Divide));
             }
             '+' => {
@@ -166,12 +162,18 @@ fn tokenize(arg: &str) -> Result<Vec<Token>, Err> {
             }
             '(' => {
                 res.push(Token::Delimiter(DelimType::OpenParen));
+                paren_hold += 1;
             }
             ')' => {
                 res.push(Token::Delimiter(DelimType::CloseParen));
+                paren_hold -= 1;
             }
             _ => return Err(Err::InvalidChar),
         }
+    }
+
+    if paren_hold != 0 {
+        return Err(Err::UnmatchedBracket);
     }
 
     return Ok(res);
