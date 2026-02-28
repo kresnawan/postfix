@@ -7,22 +7,6 @@ pub enum Token {
     Delimiter(DelimType),
 }
 
-impl Token {
-    pub fn get_delim_type(&self) -> Option<DelimType> {
-        match *self {
-            Token::Delimiter(n) => Some(n),
-            _ => None,
-        }
-    }
-
-    // pub fn get_op_type(&self) -> Option<OperatorType> {
-    //     match *self {
-    //         Token::Operator(n) => Some(n),
-    //         _ => None,
-    //     }
-    // }
-}
-
 #[derive(Debug, Clone, Copy)]
 pub enum OperatorType {
     Multiply,

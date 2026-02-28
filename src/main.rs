@@ -5,7 +5,7 @@ use err::Err;
 use token::{DelimType, OperatorType, Token};
 
 fn main() {
-    let postfix = match postfixer("10 / (5 * 0)") {
+    let postfix = match postfixer("5 * (5 + 10 * 2 / 5 - 7) / 3") {
         Ok(n) => n,
         Err(err) => {
             println!("{}", err);
@@ -28,12 +28,12 @@ fn precedence(arg: &Token) -> Option<u8> {
     }
 }
 
-fn evaluate(pf: Vec<Token>) -> Result<i32, Err> {
+fn evaluate(postfix: Vec<Token>) -> Result<i32, Err> {
     let mut res: Vec<i32> = Vec::new();
 
-    for i in 0..pf.len() {
+    for token in postfix {
         let result: i32;
-        match pf[i] {
+        match token {
             Token::Operator(o) => {
                 match o {
                     OperatorType::Multiply => {
@@ -71,8 +71,8 @@ fn evaluate(pf: Vec<Token>) -> Result<i32, Err> {
     Ok(res[0])
 }
 
-fn postfixer(opr: &str) -> Result<Vec<Token>, Err> {
-    let arg = match tokenize(opr) {
+fn postfixer(operation: &str) -> Result<Vec<Token>, Err> {
+    let arg = match tokenize(operation) {
         Ok(res) => res,
         Err(e) => {
             return Err(e);
@@ -144,9 +144,6 @@ fn postfixer(opr: &str) -> Result<Vec<Token>, Err> {
     }
 
     while let Some(n) = stack.pop() {
-        if let Some(_) = n.get_delim_type() {
-            return Err(Err::UnmatchedBracket);
-        }
         res.push(n);
     }
 
