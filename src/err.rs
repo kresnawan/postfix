@@ -7,6 +7,7 @@ pub enum Err {
     InvalidChar,
     DanglingOperator,
     UnmatchedBracket,
+    InvalidPostfix,
 }
 
 impl Display for Err {
@@ -17,6 +18,10 @@ impl Display for Err {
             Self::InvalidChar => write!(f, "Operation contains invalid char"),
             Self::DanglingOperator => write!(f, "Operator must between two numbers"),
             Self::UnmatchedBracket => write!(f, "One or more brackets are lonely"),
+            Self::InvalidPostfix => write!(
+                f,
+                "Only operators and numbers are allowed to be inside the postfix"
+            ),
         }
     }
 }

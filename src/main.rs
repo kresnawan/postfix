@@ -5,14 +5,15 @@ use err::Err;
 use token::{DelimType, OperatorType, Token};
 
 fn main() {
-    let postfix = match postfixer("2 * (3 + 5)") {
+    let postfix = match postfixer("10 / (5 * 0)") {
         Ok(n) => n,
         Err(err) => {
-            panic!("{}", err);
+            println!("{}", err);
+            std::process::exit(1);
         }
     };
 
-    println!("{:?}", postfix);
+    println!("{:?}", evaluate(postfix).unwrap());
 }
 
 fn precedence(arg: &Token) -> Option<u8> {
@@ -25,6 +26,49 @@ fn precedence(arg: &Token) -> Option<u8> {
         Token::Delimiter(_) => Some(0),
         _ => None,
     }
+}
+
+fn evaluate(pf: Vec<Token>) -> Result<i32, Err> {
+    let mut res: Vec<i32> = Vec::new();
+
+    for i in 0..pf.len() {
+        let result: i32;
+        match pf[i] {
+            Token::Operator(o) => {
+                match o {
+                    OperatorType::Multiply => {
+                        result = res[res.len() - 2] * res[res.len() - 1];
+                    }
+                    OperatorType::Divide => {
+                        if res[res.len() - 2] == 0 || res[res.len() - 1] == 0 {
+                            return Err(Err::DivideByZero);
+                        }
+                        result = res[res.len() - 2] / res[res.len() - 1];
+                    }
+                    OperatorType::Add => {
+                        result = res[res.len() - 2] + res[res.len() - 1];
+                    }
+                    OperatorType::Subtract => {
+                        result = res[res.len() - 2] - res[res.len() - 1];
+                    }
+                }
+
+                for _ in 0..=1 {
+                    res.pop().unwrap();
+                }
+                res.push(result);
+            }
+            Token::Number(n) => {
+                res.push(n);
+                continue;
+            }
+            _ => {
+                return Err(Err::InvalidPostfix);
+            }
+        }
+    }
+
+    Ok(res[0])
 }
 
 fn postfixer(opr: &str) -> Result<Vec<Token>, Err> {
