@@ -1,64 +1,8 @@
-use std::fmt::{Debug, Display};
+mod err;
+mod token;
 
-#[derive(Debug, Clone, Copy)]
-enum Token {
-    Number(i32),
-    Operator(OperatorType),
-    Delimiter(DelimType),
-}
-
-impl Token {
-    pub fn get_delim_type(&self) -> Option<DelimType> {
-        match *self {
-            Token::Delimiter(n) => Some(n),
-            _ => None,
-        }
-    }
-
-    pub fn get_op_type(&self) -> Option<OperatorType> {
-        match *self {
-            Token::Operator(n) => Some(n),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-enum OperatorType {
-    Multiply,
-    Divide,
-    Add,
-    Subtract,
-}
-
-#[derive(Debug, Clone, Copy)]
-enum DelimType {
-    OpenParen,
-    CloseParen,
-}
-
-#[derive(Debug)]
-enum Err {
-    EmptyArg,
-    DivideByZero,
-    InvalidChar,
-    DanglingOperand,
-    UnmatchedBracket,
-}
-
-impl Display for Err {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::EmptyArg => write!(f, "Operation is empty"),
-            Self::DivideByZero => write!(f, "Cannot divide number by zero"),
-            Self::InvalidChar => write!(f, "Operation contains invalid char"),
-            Self::DanglingOperand => write!(f, "Operand must between two numbers"),
-            Self::UnmatchedBracket => write!(f, "One or more brackets are lonely"),
-        }
-    }
-}
-
-impl std::error::Error for Err {}
+use err::Err;
+use token::{DelimType, OperatorType, Token};
 
 fn main() {
     let tokens = match tokenize("8 * (2 + 100) / (9 * 2 + 24)") {
@@ -78,11 +22,15 @@ fn main() {
     println!("{:?}", postfix);
 }
 
-fn precedence(arg: &OperatorType) -> u8 {
+fn precedence(arg: &Token) -> Option<u8> {
     match arg {
-        OperatorType::Add | OperatorType::Subtract => 1,
-        OperatorType::Multiply | OperatorType::Divide => 2,
-        _ => 0,
+        Token::Operator(n) => match n {
+            OperatorType::Add | OperatorType::Subtract => Some(1),
+            OperatorType::Multiply | OperatorType::Divide => Some(2),
+        },
+
+        Token::Delimiter(_) => Some(0),
+        _ => None,
     }
 }
 
@@ -94,15 +42,18 @@ fn postfixer(arg: Vec<Token>) -> Result<Vec<Token>, Err> {
 
     while let Some(&i) = arg_iter.next() {
         match i {
+            /* Operand handler */
             Token::Number(_) => {
                 res.push(i);
             }
 
+            /* Delimiter handler */
             Token::Delimiter(current) => match current {
                 DelimType::OpenParen => {
                     stack.push(i);
                     continue;
                 }
+
                 DelimType::CloseParen => {
                     while let Some(n) = stack.pop() {
                         match n {
@@ -121,14 +72,10 @@ fn postfixer(arg: Vec<Token>) -> Result<Vec<Token>, Err> {
 
                     continue;
                 }
-
-                _ => {}
             },
 
-            Token::Operator(current) => {
-                /* Handling brackets */
-                /* Open brackets instantly goes to stack */
-
+            /* Operator handler */
+            Token::Operator(_) => {
                 let temp_stack = stack.clone();
                 let last_token_in_stack = match temp_stack.last() {
                     Some(n) => n,
@@ -138,19 +85,10 @@ fn postfixer(arg: Vec<Token>) -> Result<Vec<Token>, Err> {
                     }
                 };
 
-                if let Some(n) = last_token_in_stack.get_delim_type() {
-                    match n {
-                        DelimType::OpenParen => {
-                            stack.push(i);
-                            continue;
-                        }
-                        _ => {}
-                    }
-                }
+                let current_precedence = precedence(&i).unwrap();
+                let last_token_precedence = precedence(&last_token_in_stack).unwrap();
 
-                let last_token_operand = &last_token_in_stack.get_op_type().unwrap();
-
-                if precedence(&current) <= precedence(last_token_operand) {
+                if current_precedence <= last_token_precedence {
                     stack.pop().unwrap();
                     stack.push(i);
                     res.push(*last_token_in_stack);
