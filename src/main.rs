@@ -1,3 +1,5 @@
+use std::fmt::{Debug, Display};
+
 #[derive(Debug, Clone, Copy)]
 enum Token {
     Number(i32),
@@ -14,9 +16,43 @@ enum OperandType {
     CloseBracket,
 }
 
+#[derive(Debug)]
+enum Err {
+    EmptyArg,
+    DivideByZero,
+    InvalidChar,
+    DanglingOperand,
+    UnmatchedBracket,
+}
+
+impl Display for Err {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::EmptyArg => write!(f, "Operation is empty"),
+            Self::DivideByZero => write!(f, "Cannot divide number by zero"),
+            Self::InvalidChar => write!(f, "Operation contains invalid char"),
+            Self::DanglingOperand => write!(f, "Operand must between two numbers"),
+            Self::UnmatchedBracket => write!(f, "One or more brackets are lonely"),
+        }
+    }
+}
+
+impl std::error::Error for Err {}
+
 fn main() {
-    let tokens = tokenize("8 * (2 + 100) / (9 * 2 + 24)");
-    let postfix = postfixer(tokens);
+    let tokens = match tokenize("8 * (2 + 100) / (9 * 2 + 24)") {
+        Ok(n) => n,
+        Err(err) => {
+            panic!("{}", err);
+        }
+    };
+
+    let postfix = match postfixer(tokens) {
+        Ok(n) => n,
+        Err(err) => {
+            panic!("{}", err);
+        }
+    };
 
     println!("{:?}", postfix);
 }
@@ -29,16 +65,21 @@ fn precedence(arg: &OperandType) -> u8 {
     }
 }
 
-fn postfixer(arg: Vec<Token>) -> Vec<Token> {
+fn postfixer(arg: Vec<Token>) -> Result<Vec<Token>, Err> {
     let mut res: Vec<Token> = Vec::new();
     let mut stack: Vec<Token> = Vec::new();
 
-    for i in arg {
+    let mut arg_iter = arg.iter().peekable();
+
+    while let Some(&i) = arg_iter.next() {
         match i {
             Token::Number(_) => {
                 res.push(i);
             }
+
             Token::Operand(current) => {
+                /* Handling brackets */
+                /* Open brackets instantly goes to stack */
                 match current {
                     OperandType::OpenBracket => {
                         stack.push(i);
@@ -96,10 +137,19 @@ fn postfixer(arg: Vec<Token>) -> Vec<Token> {
     }
 
     while let Some(n) = stack.pop() {
+        match n {
+            Token::Operand(b) => match b {
+                OperandType::OpenBracket | OperandType::CloseBracket => {
+                    return Err(Err::UnmatchedBracket);
+                }
+                _ => {}
+            },
+            _ => {}
+        }
         res.push(n);
     }
 
-    res
+    Ok(res)
 }
 
 fn sanitize_whitespace(str: &str) -> String {
@@ -113,8 +163,13 @@ fn sanitize_whitespace(str: &str) -> String {
     res
 }
 
-fn tokenize(arg: &str) -> Vec<Token> {
+fn tokenize(arg: &str) -> Result<Vec<Token>, Err> {
     let str = sanitize_whitespace(arg);
+
+    if str.len() == 0 {
+        return Err(Err::EmptyArg);
+    }
+
     let mut res: Vec<Token> = Vec::new();
 
     let mut iter = str.chars().peekable();
@@ -132,20 +187,18 @@ fn tokenize(arg: &str) -> Vec<Token> {
                     }
                 }
 
-                let c_as_number: Result<i32, _> = c_as_string.parse();
-                match c_as_number {
-                    Ok(num) => {
-                        res.push(Token::Number(num));
-                    }
-                    Err(_) => {
-                        panic!("Error parsing string");
-                    }
-                }
+                let c_as_number: i32 = c_as_string.parse().unwrap();
+                res.push(Token::Number(c_as_number));
             }
             '*' => {
                 res.push(Token::Operand(OperandType::Multiply));
             }
             '/' => {
+                if let Some(&n) = iter.peek() {
+                    if n == '0' {
+                        return Err(Err::DivideByZero);
+                    }
+                }
                 res.push(Token::Operand(OperandType::Divide));
             }
             '+' => {
@@ -160,9 +213,9 @@ fn tokenize(arg: &str) -> Vec<Token> {
             ')' => {
                 res.push(Token::Operand(OperandType::CloseBracket));
             }
-            _ => panic!("Char must valid"),
+            _ => return Err(Err::InvalidChar),
         }
     }
 
-    return res;
+    return Ok(res);
 }
