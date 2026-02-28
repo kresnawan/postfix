@@ -3,17 +3,38 @@ use std::fmt::{Debug, Display};
 #[derive(Debug, Clone, Copy)]
 enum Token {
     Number(i32),
-    Operand(OperandType),
+    Operator(OperatorType),
+    Delimiter(DelimType),
+}
+
+impl Token {
+    pub fn get_delim_type(&self) -> Option<DelimType> {
+        match *self {
+            Token::Delimiter(n) => Some(n),
+            _ => None,
+        }
+    }
+
+    pub fn get_op_type(&self) -> Option<OperatorType> {
+        match *self {
+            Token::Operator(n) => Some(n),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
-enum OperandType {
+enum OperatorType {
     Multiply,
     Divide,
     Add,
     Subtract,
-    OpenBracket,
-    CloseBracket,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum DelimType {
+    OpenParen,
+    CloseParen,
 }
 
 #[derive(Debug)]
@@ -57,11 +78,11 @@ fn main() {
     println!("{:?}", postfix);
 }
 
-fn precedence(arg: &OperandType) -> u8 {
+fn precedence(arg: &OperatorType) -> u8 {
     match arg {
-        OperandType::Add | OperandType::Subtract => 1,
-        OperandType::Multiply | OperandType::Divide => 2,
-        OperandType::OpenBracket | OperandType::CloseBracket => 3,
+        OperatorType::Add | OperatorType::Subtract => 1,
+        OperatorType::Multiply | OperatorType::Divide => 2,
+        _ => 0,
     }
 }
 
@@ -77,31 +98,36 @@ fn postfixer(arg: Vec<Token>) -> Result<Vec<Token>, Err> {
                 res.push(i);
             }
 
-            Token::Operand(current) => {
-                /* Handling brackets */
-                /* Open brackets instantly goes to stack */
-                match current {
-                    OperandType::OpenBracket => {
-                        stack.push(i);
-                        continue;
-                    }
-                    OperandType::CloseBracket => {
-                        while let Some(Token::Operand(n)) = stack.pop() {
-                            match n {
-                                OperandType::OpenBracket => {
+            Token::Delimiter(current) => match current {
+                DelimType::OpenParen => {
+                    stack.push(i);
+                    continue;
+                }
+                DelimType::CloseParen => {
+                    while let Some(n) = stack.pop() {
+                        match n {
+                            Token::Delimiter(d) => match d {
+                                DelimType::OpenParen => {
                                     break;
                                 }
-                                _ => {
-                                    res.push(Token::Operand(n));
-                                }
+
+                                _ => {}
+                            },
+                            _ => {
+                                res.push(n);
                             }
                         }
-
-                        continue;
                     }
 
-                    _ => {}
+                    continue;
                 }
+
+                _ => {}
+            },
+
+            Token::Operator(current) => {
+                /* Handling brackets */
+                /* Open brackets instantly goes to stack */
 
                 let temp_stack = stack.clone();
                 let last_token_in_stack = match temp_stack.last() {
@@ -112,18 +138,17 @@ fn postfixer(arg: Vec<Token>) -> Result<Vec<Token>, Err> {
                     }
                 };
 
-                let last_token_operand = match last_token_in_stack {
-                    Token::Operand(n) => n,
-                    _ => panic!("Number must not be in stack"),
-                };
-
-                match last_token_operand {
-                    OperandType::OpenBracket => {
-                        stack.push(i);
-                        continue;
+                if let Some(n) = last_token_in_stack.get_delim_type() {
+                    match n {
+                        DelimType::OpenParen => {
+                            stack.push(i);
+                            continue;
+                        }
+                        _ => {}
                     }
-                    _ => {}
                 }
+
+                let last_token_operand = &last_token_in_stack.get_op_type().unwrap();
 
                 if precedence(&current) <= precedence(last_token_operand) {
                     stack.pop().unwrap();
@@ -137,14 +162,8 @@ fn postfixer(arg: Vec<Token>) -> Result<Vec<Token>, Err> {
     }
 
     while let Some(n) = stack.pop() {
-        match n {
-            Token::Operand(b) => match b {
-                OperandType::OpenBracket | OperandType::CloseBracket => {
-                    return Err(Err::UnmatchedBracket);
-                }
-                _ => {}
-            },
-            _ => {}
+        if let Some(_) = n.get_delim_type() {
+            return Err(Err::UnmatchedBracket);
         }
         res.push(n);
     }
@@ -191,7 +210,7 @@ fn tokenize(arg: &str) -> Result<Vec<Token>, Err> {
                 res.push(Token::Number(c_as_number));
             }
             '*' => {
-                res.push(Token::Operand(OperandType::Multiply));
+                res.push(Token::Operator(OperatorType::Multiply));
             }
             '/' => {
                 if let Some(&n) = iter.peek() {
@@ -199,19 +218,19 @@ fn tokenize(arg: &str) -> Result<Vec<Token>, Err> {
                         return Err(Err::DivideByZero);
                     }
                 }
-                res.push(Token::Operand(OperandType::Divide));
+                res.push(Token::Operator(OperatorType::Divide));
             }
             '+' => {
-                res.push(Token::Operand(OperandType::Add));
+                res.push(Token::Operator(OperatorType::Add));
             }
             '-' => {
-                res.push(Token::Operand(OperandType::Subtract));
+                res.push(Token::Operator(OperatorType::Subtract));
             }
             '(' => {
-                res.push(Token::Operand(OperandType::OpenBracket));
+                res.push(Token::Delimiter(DelimType::OpenParen));
             }
             ')' => {
-                res.push(Token::Operand(OperandType::CloseBracket));
+                res.push(Token::Delimiter(DelimType::CloseParen));
             }
             _ => return Err(Err::InvalidChar),
         }
