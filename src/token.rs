@@ -13,6 +13,8 @@ pub enum OperatorType {
     Divide,
     Add,
     Subtract,
+    Caret,
+    StartCaret,
 }
 
 #[derive(Debug, Clone, Copy)]

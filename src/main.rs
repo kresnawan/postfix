@@ -5,13 +5,15 @@ use err::Err;
 use token::{DelimType, OperatorType, Token};
 
 fn main() {
-    let postfix = match postfixer("20 / 5") {
+    let postfix = match postfixer("3 * 2 ^ 3 ^ 1 + 4 * 3 ^ 2 ^ 1 * 4") {
         Ok(n) => n,
         Err(err) => {
             println!("{}", err);
             std::process::exit(1);
         }
     };
+
+    println!("{:?}", postfix);
 
     println!("{:?}", evaluate(postfix).unwrap());
 }
@@ -21,6 +23,8 @@ fn precedence(arg: &Token) -> Option<u8> {
         Token::Operator(n) => match n {
             OperatorType::Add | OperatorType::Subtract => Some(1),
             OperatorType::Multiply | OperatorType::Divide => Some(2),
+            OperatorType::Caret => Some(3),
+            _ => Some(0),
         },
 
         Token::Delimiter(_) => Some(0),
@@ -51,6 +55,10 @@ fn evaluate(postfix: Vec<Token>) -> Result<f64, Err> {
                     OperatorType::Subtract => {
                         result = res[res.len() - 2] - res[res.len() - 1];
                     }
+                    OperatorType::Caret => {
+                        result = res[res.len() - 2].powf(res[res.len() - 1]);
+                    }
+                    _ => return Err(Err::InvalidPostfix),
                 }
 
                 for _ in 0..=1 {
@@ -66,6 +74,12 @@ fn evaluate(postfix: Vec<Token>) -> Result<f64, Err> {
                 return Err(Err::InvalidPostfix);
             }
         }
+    }
+
+    println!("Evaluate: {:?}", res);
+
+    if res.len() > 1 {
+        return Err(Err::MissingOperator);
     }
 
     Ok(res[0])
@@ -112,12 +126,38 @@ fn postfixer(operation: &str) -> Result<Vec<Token>, Err> {
             },
 
             /* Operator handler */
-            Token::Operator(_) => {
+            Token::Operator(op) => {
                 /* Checks if there are double operator */
                 if let Some(&n) = arg_iter.peek() {
                     if let Token::Operator(_) = n {
                         return Err(Err::DanglingOperator);
                     }
+                }
+
+                let temp_stack = stack.clone();
+                let last_token_in_stack = match temp_stack.last() {
+                    Some(n) => n,
+                    None => {
+                        stack.push(i);
+                        continue;
+                    }
+                };
+
+                if let Token::Operator(OperatorType::Caret) = last_token_in_stack {
+                    if let OperatorType::Caret = op {
+                        stack.push(i);
+                        continue;
+                    }
+                    while let Some(Token::Operator(n)) = stack.pop() {
+                        if let OperatorType::StartCaret = n {
+                            break;
+                        }
+                        res.push(Token::Operator(OperatorType::Caret));
+                    }
+                } else if let OperatorType::Caret = op {
+                    stack.push(Token::Operator(OperatorType::StartCaret));
+                    stack.push(i);
+                    continue;
                 }
 
                 let temp_stack = stack.clone();
@@ -171,7 +211,7 @@ fn tokenize(arg: &str) -> Result<Vec<Token>, Err> {
     let mut res: Vec<Token> = Vec::new();
 
     let mut iter = str.chars().peekable();
-    let mut paren_hold: u32 = 0;
+    let mut paren_hold: i32 = 0;
 
     while let Some(c) = iter.next() {
         match c {
@@ -180,6 +220,8 @@ fn tokenize(arg: &str) -> Result<Vec<Token>, Err> {
 
                 while let Some(&next) = iter.peek() {
                     if next.is_ascii_digit() {
+                        c_as_string.push(iter.next().unwrap());
+                    } else if next == '.' {
                         c_as_string.push(iter.next().unwrap());
                     } else {
                         break;
@@ -200,6 +242,9 @@ fn tokenize(arg: &str) -> Result<Vec<Token>, Err> {
             }
             '-' => {
                 res.push(Token::Operator(OperatorType::Subtract));
+            }
+            '^' => {
+                res.push(Token::Operator(OperatorType::Caret));
             }
             '(' => {
                 res.push(Token::Delimiter(DelimType::OpenParen));

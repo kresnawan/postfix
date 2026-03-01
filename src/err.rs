@@ -8,6 +8,7 @@ pub enum Err {
     DanglingOperator,
     UnmatchedBracket,
     InvalidPostfix,
+    MissingOperator,
 }
 
 impl Display for Err {
@@ -22,6 +23,7 @@ impl Display for Err {
                 f,
                 "Only operators and numbers are allowed to be inside the postfix"
             ),
+            Self::MissingOperator => write!(f, "Operator is missing before the parenthesis"),
         }
     }
 }
