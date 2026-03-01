@@ -5,7 +5,7 @@ use err::Err;
 use token::{DelimType, OperatorType, Token};
 
 fn main() {
-    let postfix = match postfixer("5 * (5 + 10 * 2 / 5 - 7) / 3") {
+    let postfix = match postfixer("20 / 5") {
         Ok(n) => n,
         Err(err) => {
             println!("{}", err);
@@ -28,11 +28,11 @@ fn precedence(arg: &Token) -> Option<u8> {
     }
 }
 
-fn evaluate(postfix: Vec<Token>) -> Result<i32, Err> {
-    let mut res: Vec<i32> = Vec::new();
+fn evaluate(postfix: Vec<Token>) -> Result<f64, Err> {
+    let mut res: Vec<f64> = Vec::new();
 
     for token in postfix {
-        let result: i32;
+        let result: f64;
         match token {
             Token::Operator(o) => {
                 match o {
@@ -40,7 +40,7 @@ fn evaluate(postfix: Vec<Token>) -> Result<i32, Err> {
                         result = res[res.len() - 2] * res[res.len() - 1];
                     }
                     OperatorType::Divide => {
-                        if res[res.len() - 2] == 0 || res[res.len() - 1] == 0 {
+                        if res[res.len() - 2] == 0_f64 || res[res.len() - 1] == 0_f64 {
                             return Err(Err::DivideByZero);
                         }
                         result = res[res.len() - 2] / res[res.len() - 1];
@@ -186,7 +186,7 @@ fn tokenize(arg: &str) -> Result<Vec<Token>, Err> {
                     }
                 }
 
-                let c_as_number: i32 = c_as_string.parse().unwrap();
+                let c_as_number: f64 = c_as_string.parse().unwrap();
                 res.push(Token::Number(c_as_number));
             }
             '*' => {

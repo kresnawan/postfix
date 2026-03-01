@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Token {
-    Number(i32),
+    Number(f64),
     Operator(OperatorType),
     Delimiter(DelimType),
 }
