@@ -39,31 +39,23 @@ fn evaluate(postfix: Vec<Token>) -> Result<f64, Err> {
         let result: f64;
         match token {
             Token::Operator(o) => {
-                match o {
-                    OperatorType::Multiply => {
-                        result = res[res.len() - 2] * res[res.len() - 1];
-                    }
+                let right = res.pop().unwrap();
+                let left = res.pop().unwrap();
+
+                result = match o {
+                    OperatorType::Multiply => left * right,
                     OperatorType::Divide => {
-                        if res[res.len() - 2] == 0_f64 || res[res.len() - 1] == 0_f64 {
+                        if left == 0_f64 || right == 0_f64 {
                             return Err(Err::DivideByZero);
                         }
-                        result = res[res.len() - 2] / res[res.len() - 1];
+                        left / right
                     }
-                    OperatorType::Add => {
-                        result = res[res.len() - 2] + res[res.len() - 1];
-                    }
-                    OperatorType::Subtract => {
-                        result = res[res.len() - 2] - res[res.len() - 1];
-                    }
-                    OperatorType::Caret => {
-                        result = res[res.len() - 2].powf(res[res.len() - 1]);
-                    }
+                    OperatorType::Add => left + right,
+                    OperatorType::Subtract => left - right,
+                    OperatorType::Caret => left.powf(right),
                     _ => return Err(Err::InvalidPostfix),
-                }
+                };
 
-                for _ in 0..=1 {
-                    res.pop().unwrap();
-                }
                 res.push(result);
             }
             Token::Number(n) => {
