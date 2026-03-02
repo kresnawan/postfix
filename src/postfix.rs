@@ -1,6 +1,23 @@
 use crate::err::Err;
 use crate::token::{DelimType, OperatorType, Token};
 
+#[cfg(test)]
+mod tests {
+    use crate::postfix::Postfix;
+
+    #[test]
+    fn postfix_as_string() {
+        let pf = Postfix::new("5 + 3 * 2");
+        assert_eq!("5 3 2 * +", pf.unwrap().as_string());
+    }
+
+    #[test]
+    fn postfix_as_result() {
+        let pf = Postfix::new("5 + 3 * 2");
+        assert_eq!(11.0, pf.unwrap().calculate());
+    }
+}
+
 pub struct Postfix {
     pf: Vec<Token>,
 }
