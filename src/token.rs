@@ -17,6 +17,12 @@ pub enum OperatorType {
     StartCaret,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum DelimType {
+    OpenParen,
+    CloseParen,
+}
+
 impl Display for OperatorType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -28,10 +34,4 @@ impl Display for OperatorType {
             _ => write!(f, ""),
         }
     }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum DelimType {
-    OpenParen,
-    CloseParen,
 }
